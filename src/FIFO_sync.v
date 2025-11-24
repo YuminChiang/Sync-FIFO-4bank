@@ -14,47 +14,47 @@ module FIFO_sync(
     wire [4:0] rd_ptr;
 
 	FIFO_mem u_FIFO_mem (
-    	.clk      (clk)		 ,
-        .rst      (rst)		 ,
-        .wr_en    (wr_en)	 ,
-        .rd_en    (rd_en)	 ,
-        .wr_ptr   (wr_ptr)	 ,
-        .rd_ptr   (rd_ptr)	 ,
-        .data_in  (data_in)	 ,
-        .data_out (data_out) ,
-        .empty    (empty)	 ,
-        .full     (full)	 ,
-        .wr_valid (wr_valid) ,
+    	.clk      (clk),
+        .rst      (rst),
+        .wr_en    (wr_en),
+        .rd_en    (rd_en),
+        .wr_ptr   (wr_ptr),
+        .rd_ptr   (rd_ptr),
+        .data_in  (data_in),
+        .data_out (data_out),
+        .empty    (empty),
+        .full     (full),
+        .wr_valid (wr_valid),
         .rd_valid (rd_valid)
     );
     wr_ctrl u_wr_ctrl (
-        .clk    (clk)  	   ,
-        .rst    (rst)  	   ,
-        .wr_en  (wr_valid) ,
+        .clk    (clk),
+        .rst    (rst),
+        .wr_en  (wr_valid),
         .wr_ptr (wr_ptr)
     );
     rd_ctrl u_rd_ctrl (
-        .clk    (clk)	   ,
-        .rst    (rst)	   ,
-        .rd_en  (rd_valid) ,
+        .clk    (clk),
+        .rst    (rst),
+        .rd_en  (rd_valid),
         .rd_ptr (rd_ptr)
     );
 
 endmodule
 
 module FIFO_mem(
-	input             clk      ,
-    input             rst      ,
-    input             wr_en    ,
-    input             rd_en    ,
-	input       [4:0] wr_ptr   ,
-    input       [4:0] rd_ptr   ,
-    input       [7:0] data_in  ,
-    output            full     ,
-    output            empty    ,
-	output            wr_valid ,
-    output            rd_valid ,
-    output reg  [7:0] data_out
+	input            clk,
+    input            rst,
+    input            wr_en,
+    input            rd_en,
+	input [4:0]      wr_ptr,
+    input [4:0]      rd_ptr,
+    input [7:0]      data_in,
+    output           full,
+    output           empty,
+	output           wr_valid,
+    output           rd_valid,
+    output reg [7:0] data_out
 );
 	reg [7:0] mem[0:31];
 	reg [5:0] data_cnt;
@@ -93,9 +93,9 @@ module FIFO_mem(
 endmodule
 
 module wr_ctrl (
-	input 			 clk   ,
-	input       	 rst   ,
-	input 			 wr_en ,
+	input 			 clk,
+	input       	 rst,
+	input 			 wr_en,
 	output reg [4:0] wr_ptr
 );
 	always @(posedge clk) begin
@@ -107,9 +107,9 @@ module wr_ctrl (
 endmodule
 
 module rd_ctrl (
-	input 			 clk   ,
-	input       	 rst   ,
-	input 			 rd_en ,
+	input 			 clk,
+	input       	 rst,
+	input 			 rd_en,
 	output reg [4:0] rd_ptr
 );
 	always @(posedge clk) begin

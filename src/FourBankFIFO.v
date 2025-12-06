@@ -193,22 +193,30 @@ module bank_arb(
         end
     end
 
-    assign wr_en[3] = (~full[3] && arb_wr_en_M0 && (lru_order[0] == 2'b11)) || (~full[3] && arb_wr_en_M1 && (lru_order[0] == 2'b11));
-    assign wr_en[2] = (~full[2] && arb_wr_en_M0 && (lru_order[0] == 2'b10)) || (~full[2] && arb_wr_en_M1 && (lru_order[0] == 2'b10));
-    assign wr_en[1] = (~full[1] && arb_wr_en_M0 && (lru_order[0] == 2'b01)) || (~full[1] && arb_wr_en_M1 && (lru_order[0] == 2'b01));
-    assign wr_en[0] = (~full[0] && arb_wr_en_M0 && (lru_order[0] == 2'b00)) || (~full[0] && arb_wr_en_M1 && (lru_order[0] == 2'b00));
+    // Write and read enable logic using generate
+    generate
+        genvar i;
+        for (i = 0; i < 4; i = i + 1) begin : gen_en
+            assign wr_en[i] = (~full[i] && arb_wr_en_M0 && (lru_order[0] == i)) || (~full[i] && arb_wr_en_M1 && (lru_order[0] == i));
+            assign rd_en[i] = (~empty[i] && arb_rd_en_M0 && (rd_id_M0 == i)) || (~empty[i] && arb_rd_en_M1 && (rd_id_M1 == i));
+        end
+    endgenerate
 
-    // Read enable logic
-    assign rd_en[3] = (~empty[3] && arb_rd_en_M0 && (rd_id_M0 == 2'b11)) || (~empty[3] && arb_rd_en_M1 && (rd_id_M1 == 2'b11));
-    assign rd_en[2] = (~empty[2] && arb_rd_en_M0 && (rd_id_M0 == 2'b10)) || (~empty[2] && arb_rd_en_M1 && (rd_id_M1 == 2'b10));
-    assign rd_en[1] = (~empty[1] && arb_rd_en_M0 && (rd_id_M0 == 2'b01)) || (~empty[1] && arb_rd_en_M1 && (rd_id_M1 == 2'b01));
-    assign rd_en[0] = (~empty[0] && arb_rd_en_M0 && (rd_id_M0 == 2'b00)) || (~empty[0] && arb_rd_en_M1 && (rd_id_M1 == 2'b00));
-
-    // Data input multiplexing
-    assign data_in_bank0 = wr_en[0] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in_bank1 = wr_en[1] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in_bank2 = wr_en[2] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in_bank3 = wr_en[3] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+    // Data input multiplexing using generate
+    generate
+        genvar j;
+        for (j = 0; j < 4; j = j + 1) begin : gen_data_in
+            if (j == 0) begin
+                assign data_in_bank0 = wr_en[j] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+            end else if (j == 1) begin
+                assign data_in_bank1 = wr_en[j] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+            end else if (j == 2) begin
+                assign data_in_bank2 = wr_en[j] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+            end else begin
+                assign data_in_bank3 = wr_en[j] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+            end
+        end
+    endgenerate
 
     // Data output multiplexing
     assign data_out_M0 = rd_bank[0] ? data_out_bank0 : rd_bank[1] ? data_out_bank1 : rd_bank[2] ? data_out_bank2 : rd_bank[3] ? data_out_bank3 : 8'd0;

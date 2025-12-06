@@ -72,8 +72,6 @@ module FourBankFIFO(
         .data_in_bank3(data_in[3])
     );
 
-
-
     // FIFO instances using generate
     generate
         genvar i;
@@ -159,7 +157,6 @@ module bank_arb(
     output [7:0] data_in_bank2,
     output [7:0] data_in_bank3
 );
-
     reg [1:0] lru_order [0:3];
     reg [1:0] lru_buffer;
     reg [3:0] rd_bank;

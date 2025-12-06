@@ -15,8 +15,8 @@ module FourBankFIFO(
     input  [1:0]    rd_id_M1    ,
     output [7:0]    data_out_M0 ,
     output [7:0]    data_out_M1 ,
-    output reg          valid_M0,
-    output reg          valid_M1
+    output          valid_M0,
+    output          valid_M1
 );
     // Request signals
     wire M0_req = wr_en_M0 || rd_en_M0;
@@ -26,7 +26,6 @@ module FourBankFIFO(
     wire [3:0] full, empty;
     wire [7:0] data_in [0:3], data_out [0:3];
     wire [3:0] wr_en, rd_en;
-    reg [3:0] rd_bank;
 
     // Arbitration modules
     master_arb u_master_arb(
@@ -50,42 +49,30 @@ module FourBankFIFO(
         .arb_wr_en_M0(arb_wr_en_M0),
         .arb_wr_en_M1(arb_wr_en_M1),
         .full(full),
-        .wr_en(wr_en)
+        .wr_en(wr_en),
+        .arb_rd_en_M0(arb_rd_en_M0),
+        .arb_rd_en_M1(arb_rd_en_M1),
+        .rd_id_M0(rd_id_M0),
+        .rd_id_M1(rd_id_M1),
+        .empty(empty),
+        .data_in_M0(data_in_M0),
+        .data_in_M1(data_in_M1),
+        .data_out_bank0(data_out[0]),
+        .data_out_bank1(data_out[1]),
+        .data_out_bank2(data_out[2]),
+        .data_out_bank3(data_out[3]),
+        .rd_en(rd_en),
+        .data_out_M0(data_out_M0),
+        .data_out_M1(data_out_M1),
+        .valid_M0(valid_M0),
+        .valid_M1(valid_M1),
+        .data_in_bank0(data_in[0]),
+        .data_in_bank1(data_in[1]),
+        .data_in_bank2(data_in[2]),
+        .data_in_bank3(data_in[3])
     );
 
-    // Data output multiplexing
-    assign data_out_M0 = rd_bank[0] ? data_out[0] : rd_bank[1] ? data_out[1] : rd_bank[2] ? data_out[2] : rd_bank[3] ? data_out[3] : 8'd0;
-    assign data_out_M1 = rd_bank[0] ? data_out[0] : rd_bank[1] ? data_out[1] : rd_bank[2] ? data_out[2] : rd_bank[3] ? data_out[3] : 8'd0;
 
-    // Read enable logic
-    assign rd_en[3] = (~empty[3] && arb_rd_en_M0 && (rd_id_M0 == 2'b11)) || (~empty[3] && arb_rd_en_M1 && (rd_id_M1 == 2'b11));
-    assign rd_en[2] = (~empty[2] && arb_rd_en_M0 && (rd_id_M0 == 2'b10)) || (~empty[2] && arb_rd_en_M1 && (rd_id_M1 == 2'b10));
-    assign rd_en[1] = (~empty[1] && arb_rd_en_M0 && (rd_id_M0 == 2'b01)) || (~empty[1] && arb_rd_en_M1 && (rd_id_M1 == 2'b01));
-    assign rd_en[0] = (~empty[0] && arb_rd_en_M0 && (rd_id_M0 == 2'b00)) || (~empty[0] && arb_rd_en_M1 && (rd_id_M1 == 2'b00));
-
-    // Data input multiplexing
-    assign data_in[0] = wr_en[0] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in[1] = wr_en[1] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in[2] = wr_en[2] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-    assign data_in[3] = wr_en[3] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
-
-    // Sequential logic for valid signals and read bank tracking
-    always @(posedge clk or posedge rst) begin
-        if(rst) begin
-            valid_M0 = 0;
-            valid_M1 = 0;
-        end else begin
-            // Track which bank was read
-            rd_bank[0] = rd_en[0];
-            rd_bank[1] = rd_en[1];
-            rd_bank[2] = rd_en[2];
-            rd_bank[3] = rd_en[3];
-
-            // Set valid signals based on read arbitration and bank emptiness
-            valid_M0 = arb_rd_en_M0 && ((rd_id_M0 == 2'b00 && ~empty[0]) || (rd_id_M0 == 2'b01 && ~empty[1]) || (rd_id_M0 == 2'b10 && ~empty[2]) || (rd_id_M0 == 2'b11 && ~empty[3]));
-            valid_M1 = arb_rd_en_M1 && ((rd_id_M1 == 2'b00 && ~empty[0]) || (rd_id_M1 == 2'b01 && ~empty[1]) || (rd_id_M1 == 2'b10 && ~empty[2]) || (rd_id_M1 == 2'b11 && ~empty[3]));
-        end
-    end
 
     // FIFO instances using generate
     generate
@@ -143,18 +130,39 @@ module master_arb(
 
 endmodule
 
-// Bank arbitration module: selects which bank to write using LRU policy
+// Bank arbitration module: selects which bank to write using LRU policy and handles read logic
 module bank_arb(
     input clk,
     input rst,
     input arb_wr_en_M0,
     input arb_wr_en_M1,
     input [3:0] full,
-    output [3:0] wr_en
+    output [3:0] wr_en,
+    input arb_rd_en_M0,
+    input arb_rd_en_M1,
+    input [1:0] rd_id_M0,
+    input [1:0] rd_id_M1,
+    input [3:0] empty,
+    input [7:0] data_in_M0,
+    input [7:0] data_in_M1,
+    input [7:0] data_out_bank0,
+    input [7:0] data_out_bank1,
+    input [7:0] data_out_bank2,
+    input [7:0] data_out_bank3,
+    output [3:0] rd_en,
+    output [7:0] data_out_M0,
+    output [7:0] data_out_M1,
+    output reg valid_M0,
+    output reg valid_M1,
+    output [7:0] data_in_bank0,
+    output [7:0] data_in_bank1,
+    output [7:0] data_in_bank2,
+    output [7:0] data_in_bank3
 );
 
     reg [1:0] lru_order [0:3];
     reg [1:0] lru_buffer;
+    reg [3:0] rd_bank;
 
     always @(posedge clk or posedge rst) begin
         if(rst) begin
@@ -162,6 +170,9 @@ module bank_arb(
             lru_order[1] = 1;
             lru_order[2] = 2;
             lru_order[3] = 3;
+            valid_M0 = 0;
+            valid_M1 = 0;
+            rd_bank = 4'b0;
         end else begin
             if (arb_wr_en_M0 || arb_wr_en_M1) begin
                 // Check if any write succeeded
@@ -173,6 +184,15 @@ module bank_arb(
                     lru_order[3] = lru_buffer;
                 end
             end
+            // Track which bank was read
+            rd_bank[0] = rd_en[0];
+            rd_bank[1] = rd_en[1];
+            rd_bank[2] = rd_en[2];
+            rd_bank[3] = rd_en[3];
+
+            // Set valid signals based on read arbitration and bank emptiness
+            valid_M0 = arb_rd_en_M0 && ((rd_id_M0 == 2'b00 && ~empty[0]) || (rd_id_M0 == 2'b01 && ~empty[1]) || (rd_id_M0 == 2'b10 && ~empty[2]) || (rd_id_M0 == 2'b11 && ~empty[3]));
+            valid_M1 = arb_rd_en_M1 && ((rd_id_M1 == 2'b00 && ~empty[0]) || (rd_id_M1 == 2'b01 && ~empty[1]) || (rd_id_M1 == 2'b10 && ~empty[2]) || (rd_id_M1 == 2'b11 && ~empty[3]));
         end
     end
 
@@ -180,5 +200,21 @@ module bank_arb(
     assign wr_en[2] = (~full[2] && arb_wr_en_M0 && (lru_order[0] == 2'b10)) || (~full[2] && arb_wr_en_M1 && (lru_order[0] == 2'b10));
     assign wr_en[1] = (~full[1] && arb_wr_en_M0 && (lru_order[0] == 2'b01)) || (~full[1] && arb_wr_en_M1 && (lru_order[0] == 2'b01));
     assign wr_en[0] = (~full[0] && arb_wr_en_M0 && (lru_order[0] == 2'b00)) || (~full[0] && arb_wr_en_M1 && (lru_order[0] == 2'b00));
+
+    // Read enable logic
+    assign rd_en[3] = (~empty[3] && arb_rd_en_M0 && (rd_id_M0 == 2'b11)) || (~empty[3] && arb_rd_en_M1 && (rd_id_M1 == 2'b11));
+    assign rd_en[2] = (~empty[2] && arb_rd_en_M0 && (rd_id_M0 == 2'b10)) || (~empty[2] && arb_rd_en_M1 && (rd_id_M1 == 2'b10));
+    assign rd_en[1] = (~empty[1] && arb_rd_en_M0 && (rd_id_M0 == 2'b01)) || (~empty[1] && arb_rd_en_M1 && (rd_id_M1 == 2'b01));
+    assign rd_en[0] = (~empty[0] && arb_rd_en_M0 && (rd_id_M0 == 2'b00)) || (~empty[0] && arb_rd_en_M1 && (rd_id_M1 == 2'b00));
+
+    // Data input multiplexing
+    assign data_in_bank0 = wr_en[0] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+    assign data_in_bank1 = wr_en[1] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+    assign data_in_bank2 = wr_en[2] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+    assign data_in_bank3 = wr_en[3] ? (arb_wr_en_M0 ? data_in_M0 : data_in_M1) : 8'd0;
+
+    // Data output multiplexing
+    assign data_out_M0 = rd_bank[0] ? data_out_bank0 : rd_bank[1] ? data_out_bank1 : rd_bank[2] ? data_out_bank2 : rd_bank[3] ? data_out_bank3 : 8'd0;
+    assign data_out_M1 = rd_bank[0] ? data_out_bank0 : rd_bank[1] ? data_out_bank1 : rd_bank[2] ? data_out_bank2 : rd_bank[3] ? data_out_bank3 : 8'd0;
 
 endmodule

@@ -1,6 +1,6 @@
 `timescale 1ns / 10ps
 
-`define CYCLE       20.0
+`define CYCLE       25.0
 `define DATA_WIDTH  8
 `define DEPTH       32
 `define PAT_DEPTH   10000
